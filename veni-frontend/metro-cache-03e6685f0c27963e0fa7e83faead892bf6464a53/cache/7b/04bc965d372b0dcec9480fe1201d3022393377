@@ -1,0 +1,341 @@
+__d(function (global, _require, module, exports, _dependencyMap) {
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+
+  var _react2 = _require(_dependencyMap[0], "react");
+
+  var _react3 = _interopRequireDefault(_react2);
+
+  var _index = _require(_dependencyMap[1], "./../node_modules/react-transform-hmr/lib/index.js");
+
+  var _index2 = _interopRequireDefault(_index);
+
+  var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+  var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+  var _class,
+      _temp,
+      _jsxFileName = "/home/daniel/veni-frontend/screens/LoginScreen.js";
+
+  var _reactNative = _require(_dependencyMap[2], "react-native");
+
+  var _expo = _require(_dependencyMap[3], "expo");
+
+  var _reactNavigation = _require(_dependencyMap[4], "react-navigation");
+
+  function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+  function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+  function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+  function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+  var _components = {
+    LoginScreen: {
+      displayName: "LoginScreen"
+    }
+  };
+
+  var _node_modulesReactTransformHmrLibIndexJs2 = (0, _index2.default)({
+    filename: "/home/daniel/veni-frontend/screens/LoginScreen.js",
+    components: _components,
+    locals: [module],
+    imports: [_react3.default]
+  });
+
+  function _wrapComponent(id) {
+    return function (Component) {
+      return _node_modulesReactTransformHmrLibIndexJs2(Component, id);
+    };
+  }
+
+  var LoginScreen = _wrapComponent("LoginScreen")((_temp = _class = function (_React$Component) {
+    _inherits(LoginScreen, _React$Component);
+
+    function LoginScreen(props) {
+      _classCallCheck(this, LoginScreen);
+
+      var _this = _possibleConstructorReturn(this, (LoginScreen.__proto__ || Object.getPrototypeOf(LoginScreen)).call(this, props));
+
+      _this._handleLearnMorePress = function () {
+        _expo.WebBrowser.openBrowserAsync('https://docs.expo.io/versions/latest/guides/development-mode');
+      };
+
+      _this._handleHelpPress = function () {
+        _expo.WebBrowser.openBrowserAsync('https://docs.expo.io/versions/latest/guides/up-and-running.html#can-t-see-your-changes');
+      };
+
+      _this.state = {
+        loginUsername: "Your Phone Number",
+        loginPassword: "Your Password"
+      };
+      return _this;
+    }
+
+    _createClass(LoginScreen, [{
+      key: "clickLogin",
+      value: function clickLogin() {
+        var authed = true;
+
+        if (authed) {
+          this.props.navigation.navigate("App");
+        } else {
+          _reactNative.Alert.alert("Incorrect password. Please try again...");
+        }
+      }
+    }, {
+      key: "render",
+      value: function render() {
+        var _this2 = this;
+
+        return _react3.default.createElement(
+          _reactNative.View,
+          {
+            style: styles.container,
+            __source: {
+              fileName: _jsxFileName,
+              lineNumber: 45
+            }
+          },
+          _react3.default.createElement(
+            _reactNative.ScrollView,
+            {
+              style: styles.container,
+              contentContainerStyle: styles.contentContainer,
+              __source: {
+                fileName: _jsxFileName,
+                lineNumber: 46
+              }
+            },
+            _react3.default.createElement(
+              _reactNative.View,
+              {
+                style: styles.getStartedContainer,
+                __source: {
+                  fileName: _jsxFileName,
+                  lineNumber: 48
+                }
+              },
+              _react3.default.createElement(
+                _reactNative.Text,
+                {
+                  style: styles.getStartedText,
+                  __source: {
+                    fileName: _jsxFileName,
+                    lineNumber: 50
+                  }
+                },
+                "New to Veni? Click Register to get started!"
+              ),
+              _react3.default.createElement(_reactNative.Button, {
+                title: "Register",
+                onPress: function onPress() {
+                  _reactNative.Alert.alert("Go to register page...");
+                },
+                __source: {
+                  fileName: _jsxFileName,
+                  lineNumber: 54
+                }
+              })
+            ),
+            _react3.default.createElement(
+              _reactNative.View,
+              {
+                style: styles.loginContainer,
+                __source: {
+                  fileName: _jsxFileName,
+                  lineNumber: 57
+                }
+              },
+              _react3.default.createElement(
+                _reactNative.Text,
+                {
+                  __source: {
+                    fileName: _jsxFileName,
+                    lineNumber: 58
+                  }
+                },
+                " Login to get started... "
+              ),
+              _react3.default.createElement(_reactNative.TextInput, {
+                style: styles.inputBox,
+                value: this.state.loginUsername,
+                onChangeText: function onChangeText(text) {
+                  _this2.setState({
+                    text: text
+                  });
+                },
+                __source: {
+                  fileName: _jsxFileName,
+                  lineNumber: 59
+                }
+              }),
+              _react3.default.createElement(_reactNative.TextInput, {
+                style: styles.inputBox,
+                value: this.state.loginPassword,
+                onChangeText: function onChangeText(text) {
+                  _this2.setState({
+                    text: text
+                  });
+                },
+                __source: {
+                  fileName: _jsxFileName,
+                  lineNumber: 62
+                }
+              }),
+              _react3.default.createElement(_reactNative.Button, {
+                title: "Login",
+                onPress: this.clickLogin.bind(this),
+                __source: {
+                  fileName: _jsxFileName,
+                  lineNumber: 65
+                }
+              })
+            ),
+            _react3.default.createElement(
+              _reactNative.View,
+              {
+                styles: styles.animationContainer,
+                __source: {
+                  fileName: _jsxFileName,
+                  lineNumber: 68
+                }
+              },
+              _react3.default.createElement(_reactNative.Image, {
+                style: {
+                  flex: 1,
+                  width: 100,
+                  height: 100,
+                  alignSelf: "center"
+                },
+                source: _require(_dependencyMap[5], "../assets/images/Final.gif"),
+                __source: {
+                  fileName: _jsxFileName,
+                  lineNumber: 69
+                }
+              })
+            )
+          )
+        );
+      }
+    }, {
+      key: "onPressRegister",
+      value: function onPressRegister() {
+        alert('hi');
+      }
+    }]);
+
+    return LoginScreen;
+  }(_react3.default.Component), _class.navigationOptions = {
+    header: null
+  }, _temp));
+
+  exports.default = LoginScreen;
+
+  var styles = _reactNative.StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: '#fff'
+    },
+    developmentModeText: {
+      marginBottom: 20,
+      color: 'rgba(0,0,0,0.4)',
+      fontSize: 14,
+      lineHeight: 19,
+      textAlign: 'center'
+    },
+    contentContainer: {
+      paddingTop: 30
+    },
+    welcomeContainer: {
+      alignItems: 'center',
+      marginTop: 10,
+      marginBottom: 20
+    },
+    welcomeImage: {
+      width: 100,
+      height: 80,
+      resizeMode: 'contain',
+      marginTop: 3,
+      marginLeft: -10
+    },
+    getStartedContainer: {
+      alignItems: 'center',
+      marginHorizontal: 10
+    },
+    homeScreenFilename: {
+      marginVertical: 7
+    },
+    codeHighlightText: {
+      color: 'rgba(96,100,109, 0.8)'
+    },
+    codeHighlightContainer: {
+      backgroundColor: 'rgba(0,0,0,0.05)',
+      borderRadius: 3,
+      paddingHorizontal: 4
+    },
+    getStartedText: {
+      fontSize: 17,
+      color: 'rgba(96,100,109, 1)',
+      lineHeight: 24,
+      textAlign: 'center'
+    },
+    tabBarInfoContainer: _extends({
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0
+    }, _reactNative.Platform.select({
+      ios: {
+        shadowColor: 'black',
+        shadowOffset: {
+          height: -3
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 3
+      },
+      android: {
+        elevation: 20
+      }
+    }), {
+      alignItems: 'center',
+      backgroundColor: '#fbfbfb',
+      paddingVertical: 20
+    }),
+    tabBarInfoText: {
+      fontSize: 17,
+      color: 'rgba(96,100,109, 1)',
+      textAlign: 'center'
+    },
+    navigationFilename: {
+      marginTop: 5
+    },
+    loginContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: 500
+    },
+    helpLink: {
+      paddingVertical: 15
+    },
+    helpLinkText: {
+      fontSize: 14,
+      color: '#2e78b7'
+    },
+    inputBox: {
+      width: 200,
+      height: 40
+    },
+    animationContainer: {
+      flex: 1,
+      flexDirection: 'column',
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: '100%'
+    }
+  });
+});

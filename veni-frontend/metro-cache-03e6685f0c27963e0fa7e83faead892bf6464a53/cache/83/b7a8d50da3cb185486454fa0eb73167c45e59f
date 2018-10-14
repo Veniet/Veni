@@ -1,0 +1,13 @@
+__d(function (global, _require, module, exports, _dependencyMap) {
+  module.exports = _require(_dependencyMap[0], "react-native/Libraries/Image/AssetRegistry").registerAsset({
+    "__packager_asset": true,
+    "httpServerLocation": "/assets/node_modules/@expo/samples/assets/images",
+    "width": 47,
+    "height": 40,
+    "scales": [2, 3],
+    "hash": "ca6f47a5acb8dfe3bb6a9d5dd2c4d8db",
+    "name": "expo-icon",
+    "type": "png",
+    "fileHashes": ["2d8deea13c41b52b04442d91fb31c2c5", "5c36108361d0a750fd25533356f80245"]
+  });
+});

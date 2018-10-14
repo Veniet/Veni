@@ -1,0 +1,13 @@
+__d(function (global, _require, module, exports, _dependencyMap) {
+  module.exports = _require(_dependencyMap[0], "react-native/Libraries/Image/AssetRegistry").registerAsset({
+    "__packager_asset": true,
+    "httpServerLocation": "/assets/assets/images",
+    "width": 122,
+    "height": 114,
+    "scales": [1],
+    "hash": "a30cd76fa74ee5a0bab5aba37c101416",
+    "name": "robot-dev",
+    "type": "png",
+    "fileHashes": ["a30cd76fa74ee5a0bab5aba37c101416"]
+  });
+});

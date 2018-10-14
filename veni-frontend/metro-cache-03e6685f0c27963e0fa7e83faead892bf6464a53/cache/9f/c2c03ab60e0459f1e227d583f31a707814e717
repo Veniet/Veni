@@ -1,0 +1,63 @@
+__d(function (global, _require, module, exports, _dependencyMap) {
+    Object.defineProperty(exports, "__esModule", {
+        value: true
+    });
+    var _jsxFileName = "/home/daniel/veni-frontend/navigation/AppNavigator.js";
+
+    var _react = _require(_dependencyMap[0], "react");
+
+    var _react2 = _interopRequireDefault(_react);
+
+    var _reactNavigation = _require(_dependencyMap[1], "react-navigation");
+
+    var _MainTabNavigator = _require(_dependencyMap[2], "./MainTabNavigator");
+
+    var _MainTabNavigator2 = _interopRequireDefault(_MainTabNavigator);
+
+    var _LoginScreen = _require(_dependencyMap[3], "../screens/LoginScreen");
+
+    var _LoginScreen2 = _interopRequireDefault(_LoginScreen);
+
+    var _SettingsScreen = _require(_dependencyMap[4], "../screens/SettingsScreen");
+
+    var _SettingsScreen2 = _interopRequireDefault(_SettingsScreen);
+
+    var _FriendsListScreen = _require(_dependencyMap[5], "../screens/FriendsListScreen");
+
+    var _FriendsListScreen2 = _interopRequireDefault(_FriendsListScreen);
+
+    var _AmIFreeScreen = _require(_dependencyMap[6], "../screens/AmIFreeScreen");
+
+    var _AmIFreeScreen2 = _interopRequireDefault(_AmIFreeScreen);
+
+    function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+    var defaultTabNavigationOptions = {
+        header: _react2.default.createElement(_MainTabNavigator2.default, {
+            __source: {
+                fileName: _jsxFileName,
+                lineNumber: 11
+            }
+        })
+    };
+    var LoginStack = (0, _reactNavigation.createStackNavigator)({
+        Login: _LoginScreen2.default
+    });
+    var AppStack = (0, _reactNavigation.createStackNavigator)({
+        AmIFree: {
+            screen: _AmIFreeScreen2.default
+        },
+        FriendsList: {
+            screen: _FriendsListScreen2.default
+        },
+        Settings: {
+            screen: _SettingsScreen2.default
+        }
+    });
+    exports.default = (0, _reactNavigation.createSwitchNavigator)({
+        Login: LoginStack,
+        App: AppStack
+    }, {
+        initialRouteName: 'Login'
+    });
+});

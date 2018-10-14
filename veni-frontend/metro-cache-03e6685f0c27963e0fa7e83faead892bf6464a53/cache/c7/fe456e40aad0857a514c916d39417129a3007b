@@ -1,0 +1,188 @@
+__d(function (global, _require, module, exports, _dependencyMap) {
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+
+  var _react2 = _require(_dependencyMap[0], "react");
+
+  var _react3 = _interopRequireDefault(_react2);
+
+  var _index = _require(_dependencyMap[1], "./node_modules/react-transform-hmr/lib/index.js");
+
+  var _index2 = _interopRequireDefault(_index);
+
+  var _jsxFileName = "/home/daniel/veni-frontend/App.js";
+
+  var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+  var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+  var _reactNative = _require(_dependencyMap[2], "react-native");
+
+  var _expo = _require(_dependencyMap[3], "expo");
+
+  var _LoginScreen = _require(_dependencyMap[4], "./screens/LoginScreen");
+
+  var _LoginScreen2 = _interopRequireDefault(_LoginScreen);
+
+  var _reactNavigation = _require(_dependencyMap[5], "react-navigation");
+
+  var _FriendsListScreen = _require(_dependencyMap[6], "./screens/FriendsListScreen");
+
+  var _FriendsListScreen2 = _interopRequireDefault(_FriendsListScreen);
+
+  var _AmIFreeScreen = _require(_dependencyMap[7], "./screens/AmIFreeScreen");
+
+  var _AmIFreeScreen2 = _interopRequireDefault(_AmIFreeScreen);
+
+  var _AppNavigator = _require(_dependencyMap[8], "./navigation/AppNavigator");
+
+  var _AppNavigator2 = _interopRequireDefault(_AppNavigator);
+
+  var _SettingsScreen = _require(_dependencyMap[9], "./screens/SettingsScreen");
+
+  var _SettingsScreen2 = _interopRequireDefault(_SettingsScreen);
+
+  function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+  function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+  function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+  function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+  var _components = {
+    App: {
+      displayName: "App"
+    }
+  };
+
+  var _node_modulesReactTransformHmrLibIndexJs2 = (0, _index2.default)({
+    filename: "/home/daniel/veni-frontend/App.js",
+    components: _components,
+    locals: [module],
+    imports: [_react3.default]
+  });
+
+  function _wrapComponent(id) {
+    return function (Component) {
+      return _node_modulesReactTransformHmrLibIndexJs2(Component, id);
+    };
+  }
+
+  var AppStackNavigator = (0, _reactNavigation.createStackNavigator)({
+    AmIFree: {
+      screen: _AmIFreeScreen2.default,
+      navigationOptions: {
+        headerLeft: null
+      }
+    },
+    FriendsList: {
+      screen: _FriendsListScreen2.default
+    },
+    Login: {
+      screen: _LoginScreen2.default
+    },
+    Settings: {
+      screen: _SettingsScreen2.default
+    }
+  }, {
+    initialRouteName: 'Login'
+  });
+
+  var App = _wrapComponent("App")(function (_React$Component) {
+    _inherits(App, _React$Component);
+
+    function App() {
+      var _ref,
+          _this2 = this;
+
+      var _temp, _this, _ret;
+
+      _classCallCheck(this, App);
+
+      for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+        args[_key] = arguments[_key];
+      }
+
+      return _ret = (_temp = (_this = _possibleConstructorReturn(this, (_ref = App.__proto__ || Object.getPrototypeOf(App)).call.apply(_ref, [this].concat(args))), _this), _this.state = {
+        isLoadingComplete: false,
+        firstLaunch: true
+      }, _this._loadResourcesAsync = function _callee() {
+        return regeneratorRuntime.async(function _callee$(_context) {
+          while (1) {
+            switch (_context.prev = _context.next) {
+              case 0:
+                return _context.abrupt("return", Promise.all([_expo.Asset.loadAsync([_require(_dependencyMap[10], './assets/images/robot-dev.png'), _require(_dependencyMap[11], './assets/images/robot-prod.png')]), _expo.Font.loadAsync(_extends({}, _expo.Icon.Ionicons.font, {
+                  'space-mono': _require(_dependencyMap[12], './assets/fonts/SpaceMono-Regular.ttf')
+                }))]));
+
+              case 1:
+              case "end":
+                return _context.stop();
+            }
+          }
+        }, null, _this2);
+      }, _this._handleLoadingError = function (error) {
+        console.warn(error);
+      }, _this._handleFinishLoading = function () {
+        _this.setState({
+          isLoadingComplete: true
+        });
+      }, _temp), _possibleConstructorReturn(_this, _ret);
+    }
+
+    _createClass(App, [{
+      key: "render",
+      value: function render() {
+        if (!this.state.isLoadingComplete && !this.props.skipLoadingScreen) {
+          return _react3.default.createElement(_expo.AppLoading, {
+            startAsync: this._loadResourcesAsync,
+            onError: this._handleLoadingError,
+            onFinish: this._handleFinishLoading,
+            __source: {
+              fileName: _jsxFileName,
+              lineNumber: 37
+            }
+          });
+          {}
+        } else {
+          return _react3.default.createElement(
+            _reactNative.View,
+            {
+              style: styles.container,
+              __source: {
+                fileName: _jsxFileName,
+                lineNumber: 50
+              }
+            },
+            _reactNative.Platform.OS === 'ios' && _react3.default.createElement(_reactNative.StatusBar, {
+              barStyle: "default",
+              __source: {
+                fileName: _jsxFileName,
+                lineNumber: 51
+              }
+            }),
+            _react3.default.createElement(_AppNavigator2.default, {
+              __source: {
+                fileName: _jsxFileName,
+                lineNumber: 52
+              }
+            })
+          );
+        }
+      }
+    }]);
+
+    return App;
+  }(_react3.default.Component));
+
+  exports.default = App;
+
+  var styles = _reactNative.StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: '#fff'
+    }
+  });
+});

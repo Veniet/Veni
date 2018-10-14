@@ -1,0 +1,93 @@
+__d(function (global, _require, module, exports, _dependencyMap) {
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  var _jsxFileName = "/home/daniel/veni-frontend/navigation/MainTabNavigator.js";
+
+  var _react = _require(_dependencyMap[0], "react");
+
+  var _react2 = _interopRequireDefault(_react);
+
+  var _reactNative = _require(_dependencyMap[1], "react-native");
+
+  var _reactNavigation = _require(_dependencyMap[2], "react-navigation");
+
+  var _TabBarIcon = _require(_dependencyMap[3], "../components/TabBarIcon");
+
+  var _TabBarIcon2 = _interopRequireDefault(_TabBarIcon);
+
+  var _LoginScreen = _require(_dependencyMap[4], "../screens/LoginScreen");
+
+  var _LoginScreen2 = _interopRequireDefault(_LoginScreen);
+
+  var _FriendsListScreen = _require(_dependencyMap[5], "../screens/FriendsListScreen");
+
+  var _FriendsListScreen2 = _interopRequireDefault(_FriendsListScreen);
+
+  var _SettingsScreen = _require(_dependencyMap[6], "../screens/SettingsScreen");
+
+  var _SettingsScreen2 = _interopRequireDefault(_SettingsScreen);
+
+  var _AmIFreeScreen = _require(_dependencyMap[7], "../screens/AmIFreeScreen");
+
+  var _AmIFreeScreen2 = _interopRequireDefault(_AmIFreeScreen);
+
+  function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+  var HomeStack = (0, _reactNavigation.createStackNavigator)({
+    Home: _LoginScreen2.default
+  });
+  HomeStack.navigationOptions = {
+    tabBarLabel: 'Home',
+    tabBarIcon: function tabBarIcon(_ref) {
+      var focused = _ref.focused;
+      return _react2.default.createElement(_TabBarIcon2.default, {
+        focused: focused,
+        name: _reactNative.Platform.OS === 'ios' ? "ios-information-circle" + (focused ? '' : '-outline') : 'md-information-circle',
+        __source: {
+          fileName: _jsxFileName,
+          lineNumber: 18
+        }
+      });
+    }
+  };
+  var FriendsListStack = (0, _reactNavigation.createStackNavigator)({
+    Friends: _FriendsListScreen2.default
+  });
+  FriendsListStack.navigationOptions = {
+    tabBarLabel: 'Friends',
+    tabBarIcon: function tabBarIcon(_ref2) {
+      var focused = _ref2.focused;
+      return _react2.default.createElement(_TabBarIcon2.default, {
+        focused: focused,
+        name: _reactNative.Platform.OS === 'ios' ? "ios-link" + (focused ? '' : '-outline') : 'md-link',
+        __source: {
+          fileName: _jsxFileName,
+          lineNumber: 36
+        }
+      });
+    }
+  };
+  var SettingsStack = (0, _reactNavigation.createStackNavigator)({
+    Settings: _SettingsScreen2.default
+  });
+  SettingsStack.navigationOptions = {
+    tabBarLabel: 'Edit My Profile',
+    tabBarIcon: function tabBarIcon(_ref3) {
+      var focused = _ref3.focused;
+      return _react2.default.createElement(_TabBarIcon2.default, {
+        focused: focused,
+        name: _reactNative.Platform.OS === 'ios' ? "ios-options" + (focused ? '' : '-outline') : 'md-options',
+        __source: {
+          fileName: _jsxFileName,
+          lineNumber: 50
+        }
+      });
+    }
+  };
+  exports.default = (0, _reactNavigation.createBottomTabNavigator)({
+    HomeStack: HomeStack,
+    FriendsListStack: FriendsListStack,
+    SettingsStack: SettingsStack
+  });
+});

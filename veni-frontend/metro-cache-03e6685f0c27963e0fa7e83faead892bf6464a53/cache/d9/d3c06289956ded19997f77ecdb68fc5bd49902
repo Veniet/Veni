@@ -1,0 +1,13 @@
+__d(function (global, _require, module, exports, _dependencyMap) {
+  module.exports = _require(_dependencyMap[0], "react-native/Libraries/Image/AssetRegistry").registerAsset({
+    "__packager_asset": true,
+    "httpServerLocation": "/assets/node_modules/@expo/samples/assets/images",
+    "width": 40,
+    "height": 40,
+    "scales": [2, 3],
+    "hash": "526f332b70306ed262a42c6bcd88ef82",
+    "name": "slack-icon",
+    "type": "png",
+    "fileHashes": ["af47141a24eb8e5751dfd034159479bd", "ad107d1ca027259ca50ce0f432293e6c"]
+  });
+});

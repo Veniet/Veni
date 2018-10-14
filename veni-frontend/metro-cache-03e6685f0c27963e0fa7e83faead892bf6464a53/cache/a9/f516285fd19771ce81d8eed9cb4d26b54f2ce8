@@ -1,0 +1,11 @@
+__d(function (global, _require, module, exports, _dependencyMap) {
+	module.exports = _require(_dependencyMap[0], "react-native/Libraries/Image/AssetRegistry").registerAsset({
+		"__packager_asset": true,
+		"httpServerLocation": "/assets/assets/fonts",
+		"scales": [1],
+		"hash": "49a79d66bdea2debf1832bf4d7aca127",
+		"name": "SpaceMono-Regular",
+		"type": "ttf",
+		"fileHashes": ["49a79d66bdea2debf1832bf4d7aca127"]
+	});
+});
