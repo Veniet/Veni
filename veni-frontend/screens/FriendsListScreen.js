@@ -39,6 +39,20 @@ export default class FriendsListScreen extends React.Component {
     title: 'Your Free Friends',
   };
 
+    clickFriend(friend) {
+        const url = (Platform.OS === 'android')
+            ? 'sms:' + friend.phone + '?body=Hey! I saw you\'re free tonight on Veni. Want to hang out?'
+            : 'sms:' + friend.phone;
+
+        Linking.canOpenURL(url).then(supported => {
+            if (!supported) {
+                console.log('Unsupported url: ' + url)
+            } else {
+                return Linking.openURL(url)
+            }
+        }).catch(err => console.error('An error occurred', err))
+    }
+
   render() {
     return (
         <FlatList
@@ -49,10 +63,7 @@ export default class FriendsListScreen extends React.Component {
                     title={`${item.name}`}
                     subtitle={item.name + "@gmail.com"}
                     avatar={{ uri: item.image}}
-                    onPress={() => {Alert.alert("Going to text screen for  " + item.name + "(" + item.phone + ")")}}
-
-
-                />
+                    onPress={() => {this.clickFriend(item)}}
             )}
             keyExtractor={(item, index) => index.toString()}
         />
