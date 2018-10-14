@@ -1,10 +1,11 @@
 USE Veni;
 
 
-DROP TABLE IF EXISTS User;
-DROP TABLE IF EXISTS Friend;
-DROP TABLE IF EXISTS FreeLog;
 DROP TABLE IF EXISTS ContactLog;
+DROP TABLE IF EXISTS FreeLog;
+DROP TABLE IF EXISTS Friend;
+DROP TABLE IF EXISTS FriendRequest;
+DROP TABLE IF EXISTS User;
 
 
 CREATE TABLE User (
@@ -18,6 +19,16 @@ CREATE TABLE User (
     relationshipStatus VARCHAR(16),
     thumbnail BLOB,                   /* TAI: consider storing in filesystem instead. */
     UNIQUE INDEX index_User_phoneNumber (phoneNumber)
+);
+
+
+CREATE TABLE FriendRequest (
+    sourceUserId INT NOT NULL,
+    targetUserId INT NOT NULL,
+    timestamp DATETIME NOT NULL,
+    PRIMARY KEY (sourceUserId, targetUserId),
+    FOREIGN KEY (sourceUserId) REFERENCES User(userId) ON UPDATE CASCADE,
+    FOREIGN KEY (targetUserId) REFERENCES User(userId) ON UPDATE CASCADE
 );
 
 
