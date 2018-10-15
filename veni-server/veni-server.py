@@ -112,7 +112,7 @@ class APICall:
 
 
 def _checkUID(params, db):
-    uid = params.get("uid", None)
+    uid = params.get("userId", None)
     if not uid  or  not uid.isdigit():
         abort(400)
         return None
@@ -144,7 +144,7 @@ _g_userColumns = [ "deviceNotificationToken", "phoneNumber", "name", "email", "b
 def _setUserInfo(apicall):
     global _g_userColumns
     queryParams = []
-    if "uid" in apicall.params:
+    if "userId" in apicall.params:
         uid = _checkUID(params, db)
         sql = "UPDATE User SET "
         for paramKey, paramVal in apicall.params.items():
@@ -191,7 +191,9 @@ def _setStatus(apicall):
         apicall.db.rollback()
         raise
     friendCursor = apicall.db.cursor() 
-    sql = """SELECT FL.userId FROM FreeLog AS FL
+    sql = """SELECT FL.userId, U.deviceNotificationToken 
+             FROM FreeLog AS FL
+             INNER JOIN User AS U ON FL.userId = U.userId 
              INNER JOIN Friend AS FF1 ON FL.userId = FF1.userId1 
              INNER JOIN Friend AS FF2 ON FL.userId = FF2.userId2 
              WHERE FF1.userId2 = %s AND FF2.userId1 = %s
@@ -201,6 +203,7 @@ def _setStatus(apicall):
     friends = []
     for friend in friendCursor.fetchall():
         friends.append(friend[0])
+        _pushNotification(friend[1], { "type" : "friendFree", "userId": uid })
     # TODO:  include thumbnail and phoneNumber if they changed
     return jsonify(friends)
 
@@ -251,7 +254,7 @@ def _addFriend(apicall):
         friendPayload["thumbnail"] = friendUser[4]
         friendPayload["requestTimestamp"] = friendReq[0]
         cursor = apicall.db.cursor()
-        myDeviceToken = cursor.execute("SELECT deviceNotificationToken FROM User WHERE uid = %s", uid).fetchone()[0]
+        myDeviceToken = cursor.execute("SELECT deviceNotificationToken FROM User WHERE userId = %s", uid).fetchone()[0]
         _pushNotification(myDeviceToken, friendPayload)
     else:
         cursor = apicall.db.cursor()
@@ -283,7 +286,7 @@ def _contactFriend(apicall):
     cursor = apicall.db.cursor()
     try:
         nowstr = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
-        cursor.execute(sql, (uid, apicall.param["friendUid"], nowstr))
+        cursor.execute(sql, (uid, apicall.param["friendUserId"], nowstr))
         apicall.db.commit()
     except Exception as e:
         apicall.db.rollback()
@@ -306,21 +309,21 @@ def userInfo():
 @app.route("/status", methods=['POST'])
 def status():
     global app
-    requiredParams = [ "uid", "free" ]
+    requiredParams = [ "userId", "free" ]
     APICall(app, request, _setStatus, requiredParams).handle()
 
 
 @app.route("/friend", methods=['POST'])
 def friend():
     global app
-    requiredParams = [ "uid", "friendPhoneNumber" ]
+    requiredParams = [ "userId", "friendPhoneNumber" ]
     APICall(app, request, _addFriend, requiredParams).handle()
 
 
 @app.route("/contact", methods=['POST'])
 def contact():
     global app
-    requiredParams = [ "uid", "friendUid" ]
+    requiredParams = [ "userId", "friendUserId" ]
     APICall(app, request, _contactFriend, requiredParams).handle()
 
 
