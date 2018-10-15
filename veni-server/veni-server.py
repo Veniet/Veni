@@ -57,7 +57,7 @@ class APICall:
 
 
     def _enableLogging(self):
-        if (("started" in self._config["logging"]  and self._config["logging"]["started"])  or  self._app.debug):
+        if (("started" in self._config["logging"]  and  self._config["logging"]["started"])  or  self._app.debug):
             return
         handler = FileHandler(self._config["logging"]["logfile"])
         handler.setFormatter(Formatter('%(asctime)s %(levelname)s line=%(lineno)d - %(message)s'))
@@ -134,6 +134,13 @@ class APICall:
         return decorated
 
 
+    def _uidFromPhoneNum(self, phoneNum):
+        cursor = self._db.cursor()
+        cursor.execute("SELECT userId FROM User WHERE phoneNumber = %s", (phoneNum, ))
+        ur = cursor.fetchone()
+        return ur[0] if ur else None
+
+
     @apihandler
     def setUserInfo(self):
         queryParams = []
@@ -150,8 +157,9 @@ class APICall:
             sql += " WHERE userId = %s"
             queryParams.append(self._uid)
             resultMsg = "successfully updated user info"
+            self._app.logger.info("updating user {} with: {}".format(self._uid, queryParams))
+            # TODO:  notify friends if thumbnail and/or phoneNumber changed
         else:
-            # TODO:  handle attempt to insert duplicate phoneNumber
             requiredColumns = [ "deviceNotificationToken", "phoneNumber", "name", "email" ]  
             sql = "INSERT INTO User ({}) VALUES(%s{})".format(",".join(self._userColumns), ", %s" * (len(self._userColumns) - 1))
             for col in self._userColumns:
@@ -162,7 +170,11 @@ class APICall:
             if len(requiredColumns) > 0:
                 self._app.logger.error("adding new user missing required field(s): {}".format(requiredColumns))
                 abort(400)
+            if self._uidFromPhoneNum(self.params["phoneNumber"]):
+                self._app.logger.warning("tried to add duplicate phoneNumber: {}".format(self.params["phoneNumber"]))
+                return make_response(jsonify({ "message": "duplicate" }), 403)
             resultMsg = "successfully registered new user"
+            self._app.logger.info("adding new user with: {}".format(queryParams))
         cursor = self._db.cursor()
         try:
             cursor.execute(sql, queryParams)
@@ -171,9 +183,7 @@ class APICall:
             self._db.rollback()
             raise
         if not self._uid:
-            cursor = self._db.cursor()
-            cursor.execute("SELECT userId FROM User WHERE phoneNumber = %s", (self.params["phoneNumber"], ))
-            self._uid = cursor.fetchone()[0]
+            self._uid = self._uidFromPhoneNum(self.params["phoneNumber"])
         return make_response(jsonify({ "message": resultMsg, "userId": self._uid }), 200)
 
 
@@ -182,6 +192,7 @@ class APICall:
         free = self.params.get("free", False)
         if not free:
             abort(400)
+        self._app.logger.info("user {} set free status".format(self._uid))
         insertCursor = self._db.cursor()
         try:
             nowstr = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
@@ -204,7 +215,6 @@ class APICall:
         for friend in friendCursor.fetchall():
             friends.append(friend[0])
             self._pushNotification(friend[1], { "type" : "friendFree", "userId": self._uid })
-        # TODO:  include thumbnail and phoneNumber if they changed
         return make_response(jsonify(friends), 200)
 
 
@@ -274,24 +284,29 @@ class APICall:
     # TODO:  auto-expiring friends requires push notification --> use a separate script
     @apihandler
     def addFriend(self):
-        if self._friendCount() >= _g_maxFriends:
+        if self._friendCount() >= self._maxFriends:
+            self._app.logger.info("user {} tried to add too many friends".format(self._uid))
             abort(403)
         cursor = self._db.cursor()
-        cursor.execute("SELECT userId, deviceNotificationToken, phoneNumber, name, thumbnail FROM User WHERE phoneNumber = %s", self.params["friendPhoneNumber"])
+        cursor.execute("SELECT userId, deviceNotificationToken, phoneNumber, name, thumbnail FROM User WHERE phoneNumber = %s", (self.params["friendPhoneNumber"], ))
         friendUser = cursor.fetchone()
         if not friendUser:
+            self._app.logger.warning("user {} tried to add friend with unknown phoneNumber={}".format(self._uid, self.params["friendPhoneNumber"]))
             abort(404)
         if "remove" in self.params:
+            self._app.logger.info("user {} removing friend {}".format(self._uid, friendUser[0]))
             _removeFriend(friendUser[0], friendUser[1])
             return make_response(jsonify({ "message": "successfully removed friend" }), 200)
         cursor = self._db.cursor()
         cursor.execute("SELECT timestamp FROM FriendRequest WHERE sourceUserId = %s AND targetUserId = %s", (friendUser[0], self._uid))
         friendReq = cursor.fetchone()
         if friendReq:
+            self._app.logger.info("user {} accepted friend request from {}".format(self._uid, friendUser[0]))
             self._promoteFriendReq(friendUser[0])
             self._notifyFriendReq("friendAccepted", friendUser[1], friendReq[0])
             return make_response(jsonify({ "friend": { "userId": friendUser[0], "phoneNumber": friendUser[2], "name": friendUser[3], "thumbnail": friendUser[4] } }), 200)
         else:
+            self._app.logger.info("user {} friend request to {}".format(self._uid, friendUser[0]))
             requestedTimestamp = self._addFriendReq(friendUser[0])
             self._notifyFriendReq("friendRequest", friendUser[1], requestedTimestamp)
             return make_response(jsonify({ "message": "sent friend request" }), 202)
@@ -299,6 +314,7 @@ class APICall:
 
     @apihandler
     def contactFriend(self):
+        self._app.logger.info("user {} contacting {}".format(self._uid, self.param["friendUserId"]))
         sql = "INSERT INTO ContactLog (sourceUserId, targetUserId, timestamp) VALUES (%s, %s, %s)"
         cursor = self._db.cursor()
         try:
