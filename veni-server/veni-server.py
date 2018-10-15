@@ -6,11 +6,11 @@ import json
 from flask import Flask
 from flask import request, abort
 from flask.json import jsonify
-import gcm
-import apns
+from pyfcm import FCMNotification
 import logging
 from logging import Formatter
 from logging import FileHandler
+from functools import wraps
 
 
 app = Flask(__name__)
@@ -20,35 +20,28 @@ _g_configFile = "./veni.cfg"
 
 
 class APICall:
-    def __init__(self, app, request, handler, requiredParams = []):
+    def __init__(self, app, request, requiredParams = []):
         self._uid = None
         self._config = {}
         self.params = {}
-        self._handler = handler
         self._app = app
         self._request = request
         self._readConfigFile()
         self._enableLogging()
-        self._checkAuth()
-        if not self._uid:
-            abort(401)
+        self._pushService = FCMNotification(api_key="AAAAJcqwb2M:APA91bFixpCKO1fE6kObLma1upi1RBPWHNMufAFhz2CzycG2oqfELoh7vLZ8ceGCpYxiDuClCnsD9eJp1BgMkl2FI97996JC4vAqZMuO_HF7VHBEYFIPUuhvlRQ2KuKlMsrSYwgdjZ1Y")
+        self._userColumns = [ "deviceNotificationToken", "phoneNumber", "name", "email", "birthYear", "gender", "relationshipStatus", "thumbnail" ]
+        self._maxFriends = 20
         if not self._getRequestParams(requiredParams):
             abort(400)
         if not self._connectDB():
             abort(500)
+        self._checkAuth()
+        if not self._uid:
+            abort(401)
 
 
     def __del__(self):
         self._closeDB()
-
-
-    def handle(self):
-        try:
-            return self._handler(self)
-        except Exception as e:
-            self._app.logger.error("Caught exception in api handler:  {}".format(e))
-            self_closeDB()
-            abort(500)
 
 
     def _readConfigFile(self):
@@ -84,9 +77,21 @@ class APICall:
         return True
 
 
+    def _checkUID(self):
+        uid = self.params.get("userId", None)
+        if not uid  or  not uid.isdigit():
+            abort(400)
+        cursor = self.db.cursor()
+        if cursor.execute("SELECT phoneNumber FROM User WHERE userId = %s", (uid, )).fetchone():
+            return uid
+        return None
+
+
     def _checkAuth(self):
-        self._uid = TODO(self._request)
+        # HACK FOR NOW.
         # TODO:  use JWTs?  https://realpython.com/token-based-authentication-with-flask/
+        if self._request.method != "POST"  or  self._request.path != "/userInfo"  or  "userId" in self.params:
+            self._uid = self._checkUID()
 
 
     def _connectDB(self):
@@ -110,187 +115,200 @@ class APICall:
             self._db = None
 
 
-
-def _checkUID(params, db):
-    uid = params.get("userId", None)
-    if not uid  or  not uid.isdigit():
-        abort(400)
-        return None
-    cursor = db.cursor()
-    if cursor.execute("SELECT phoneNumber FROM User WHERE userId = %s", (uid, )).fetchone():
-        return uid
-    return None
+    def _pushNotification(self, deviceToken, payload):
+        return self._pushService.single_device_data_message(registration_id=deviceToken, data_message=payload)
 
 
-def _pushNotification(deviceToken, payload):
-    pass # TODO:  is it possible to tell from the token which type of notification
+    def apihandler(fn):
+        @wraps(fn)
+        def decorated(*args, **kwargs):
+            try:
+                return fn(*args, **kwargs)
+            except HTTPException as he:
+                raise
+            except Exception as e:
+                args[0]._app.logger.error("Caught unexpected exception in api handler:  {}".format(e))
+                abort(500)
+            finally:
+                args[0]._closeDB()
+        return decorated
 
 
-def _pushToAPNS(messageDict):
-    pass  # TODO
-
-
-def _pushToGCM(messageDict):
-    pass # TODO
-
-
-
-##############
-## Handlers ##
-##############
-
-_g_userColumns = [ "deviceNotificationToken", "phoneNumber", "name", "email", "birthYear", "gender", "relationshipStatus", "thumbnail" ]
-
-def _setUserInfo(apicall):
-    global _g_userColumns
-    queryParams = []
-    if "userId" in apicall.params:
-        uid = _checkUID(params, db)
-        sql = "UPDATE User SET "
-        for paramKey, paramVal in apicall.params.items():
-            if paramKey in _g_userColumns:
-                if queryParams:
-                    sql += ", "
-                sql += "{} = %s".format(paramKey)
+    @apihandler
+    def setUserInfo(self):
+        queryParams = []
+        if "userId" in self.params:
+            sql = "UPDATE User SET "
+            for paramKey, paramVal in self.params.items():
+                if paramKey in self._userColumns:
+                    if queryParams:
+                        sql += ", "
+                    sql += "{} = %s".format(paramKey)
+                    queryParams.append(paramVal)
+            if not queryParams:
+                abort(400)
+            sql += " WHERE userId = %s"
+            queryParams.append(self._uid)
+            resultMsg = "successfully updated user info"
+        else:
+            requiredColumns = [ "deviceNotificationToken", "phoneNumber", "name", "email" ]  
+            sql = "INSERT INTO User ({}) VALUES(%s{})".format(",".join(self._userColumns), ", %s" * (len(self._userColumns) - 1))
+            for col in self._userColumns:
+                paramVal = self.params.get(col, None)
+                if paramVal  and  col in requiredColumns:
+                    requiredColumns.remove(col)
                 queryParams.append(paramVal)
-        if not queryParams:
-            abort(400)
-        sql += " WHERE userId = %s"
-        queryParams.append(uid)
-    else:
-        requiredColumns = [ "deviceNotificationToken", "phoneNum", "name", "email" ]  
-        sql = "INSERT INTO User ({}) VALUES(%s{})".format(",".join(_g_userColumns), ", %s" * (len(_g_userColumns) - 1))
-        for col in _g_userColumns:
-            paramVal = Aapicall.params.get(col, None)
-            if paramVal  and  col in requiredColumns:
-                requiredColumns.remove(col)
-            queryParams.append(paramVal)
-        if len(requiredColumns) > 0:
-            app.logger.error("adding new user missing required field(s): {}".format(requiredColumns))
-            abort(400)
-    cursor = apicall.db.cursor()
-    try:
-        cusor.execute(sql, queryParams)
-        apicall.db.commit()
-    except Exception as e:
-        apicall.db.rollback()
-        raise
+            if len(requiredColumns) > 0:
+                app.logger.error("adding new user missing required field(s): {}".format(requiredColumns))
+                abort(400)
+            resultMsg = "successfully registered new user"
+            # TODO:  now return new userid
+        cursor = self.db.cursor()
+        try:
+            cusor.execute(sql, queryParams)
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            raise
+        if not self._uid:
+            cursor = self.db.cursor()
+            cursor.execute("SELECT userId FROM User WHERE phoneNumber = %s", self.params["phoneNumber"])
+            self._uid = cursor.fetchone()[0]
+        return { "message": resultMsg, "userId": self._uid }, 200
 
 
-def _setStatus(apicall):
-    uid = _checkUID(apicall.params, apicall.db)
-    free = apicall.params.get("free", False)
-    if not free:
-        abort(400)
-    insertCursor = apicall.db.cursor()
-    try:
+    @apihandler
+    def setStatus(self):
+        free = self.params.get("free", False)
+        if not free:
+            abort(400)
+        insertCursor = self.db.cursor()
+        try:
+            nowstr = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+            insertCursor.execute("INSERT INTO FreeLog (userId, timestamp) VALUES(%s, %s)", (self._uid, nowstr))
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            raise
+        friendCursor = self.db.cursor() 
+        sql = """SELECT FL.userId, U.deviceNotificationToken 
+                 FROM FreeLog AS FL
+                 INNER JOIN User AS U ON FL.userId = U.userId 
+                 INNER JOIN Friend AS FF1 ON FL.userId = FF1.userId1 
+                 INNER JOIN Friend AS FF2 ON FL.userId = FF2.userId2 
+                 WHERE FF1.userId2 = %s AND FF2.userId1 = %s
+                 AND FL.timestamp > %s"""
+        timestr = (datetime.datetime.now() + datetime.timedelta(hours=-12)).strftime("%Y-%m-%d %H-%M-%S")
+        friendCursor.execute(sql, (self._uid, self._uid, timestr))
+        friends = []
+        for friend in friendCursor.fetchall():
+            friends.append(friend[0])
+            self._pushNotification(friend[1], { "type" : "friendFree", "userId": self._uid })
+        # TODO:  include thumbnail and phoneNumber if they changed
+        return jsonify(friends), 200
+
+
+    def _friendCount(self):
+        cursor = self.db.cursor()
+        cursor.execute("SELECT COUNT(*) FROM Friend WHERE userId1 = %s OR userId2= %s", (self._uid, self._uid))
+        return cursor.fetchone()[0]
+
+
+    def _removeFriend(self, friendUid, friendDeviceToken):
         nowstr = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
-        insertCursor.execute("INSERT INTO FreeLog (userId, timestamp) VALUES(%s, %s)", (uid, nowstr))
-        apicall.db.commit()
-    except Exception as e:
-        apicall.db.rollback()
-        raise
-    friendCursor = apicall.db.cursor() 
-    sql = """SELECT FL.userId, U.deviceNotificationToken 
-             FROM FreeLog AS FL
-             INNER JOIN User AS U ON FL.userId = U.userId 
-             INNER JOIN Friend AS FF1 ON FL.userId = FF1.userId1 
-             INNER JOIN Friend AS FF2 ON FL.userId = FF2.userId2 
-             WHERE FF1.userId2 = %s AND FF2.userId1 = %s
-             AND FL.timestamp > %s"""
-    timestr = (datetime.datetime.now() + datetime.timedelta(hours=-12)).strftime("%Y-%m-%d %H-%M-%S")
-    friendCursor.execute(sql, (uid, uid, timestr))
-    friends = []
-    for friend in friendCursor.fetchall():
-        friends.append(friend[0])
-        _pushNotification(friend[1], { "type" : "friendFree", "userId": uid })
-    # TODO:  include thumbnail and phoneNumber if they changed
-    return jsonify(friends)
-
-
-_g_maxFriends = 20
-
-# TODO:  auto-expiring friends requires push notification --> use a separate script
-def _addFriend(apicall):
-    global _g_maxFriends
-    uid = _checkUID(apicall.params, apicall.db)
-    cursor = apicall.db.cursor()
-    cursor.execute("SELECT COUNT(*) FROM Friend WHERE userId1 = %s OR userId2= %s", (uid, uid))
-    if cursor.fetchone()[0] >= _g_maxFriends:
-        abort(403)
-    cursor = apicall.db.cursor()
-    cursor.execute("SELECT userId, deviceNotificationToken, phoneNumber, name, thumbnail FROM User WHERE phoneNumber = %s", apicall.params["friendPhoneNumber"])
-    friendUser = cursor.fetchone()
-    if not friendUser:
-        abort(404)
-    nowstr = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
-    if "remove" in apicall.params:
+        cursor = self.db.cursor()
         try:
-            cursor = apicall.db.cursor()
-            cursor.execute("UPDATE Friend SET timeEnded = %s WHERE timeEnded IS NOT NULL AND ((userId1 = %s AND userId2 = %s) OR (userId1 = %s AND userId2 = %s))", (nowstr, uid, friendUser[0], friendUser[0], uid)) 
-            apicall.db.commit()
+            self.cursor.execute("UPDATE Friend SET timeEnded = %s WHERE timeEnded IS NOT NULL AND ((userId1 = %s AND userId2 = %s) OR (userId1 = %s AND userId2 = %s))", (nowstr, self._uid, friendUid, friendUid, self._uid)) 
+            self.db.commit()
+            self._pushNotification(friendDeviceToken, { "type": "removeFriend", "userId": self._uid })
         except Exception as e:
-            apicall.db.rollback()
+            self.db.rollback()
             raise
-        return
-    cursor = apicall.db.cursor()
-    cursor.execute("SELECT timestamp FROM FriendRequest WHERE sourceUserId = %s AND targetUserId = %s", (friendUid, uid))
-    friendReq = cursor.fetchone()
-    if friendReq:
+
+
+    def _promoteFriendReq(self, friendUid):
+        nowstr = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
         try:
-            cursor = apicall.db.cursor()
-            cursor.execute("INSERT INTO Friend (userId1, userId2, timeStarted, timeEnded) VALUES(?, ?, ?, ?)", (friendUid, uid, nowstr, None))
-            cursor.execute("DELETE FROM FriendRequest WHERE sourceUserId = %s AND targetUserId = %s", (friendUid, uid))
-            apicall.db.commit()
-            _pushNotification(friendUser[1], { "type": "removeFriend", "userId": uid })
+            cursor = self.db.cursor()
+            cursor.execute("INSERT INTO Friend (userId1, userId2, timeStarted, timeEnded) VALUES(?, ?, ?, ?)", (friendUid, self._uid, nowstr, None))
+            cursor.execute("DELETE FROM FriendRequest WHERE sourceUserId = %s AND targetUserId = %s", (friendUid, self._uid))
+            self.db.commit()
         except Exception as e:
-            apicall.db.rollback()
+            self.db.rollback()
             raise
-        friendPayload["type"] = "friendAccepted"
-        friendPayload["message"] = "accepted friend request"
-        friendPayload["userId"] = friendUser[0]
-        friendPayload["phoneNumber"] = friendUser[2]
-        friendPayload["name"] = friendUser[3]
-        friendPayload["thumbnail"] = friendUser[4]
-        friendPayload["requestTimestamp"] = friendReq[0]
-        cursor = apicall.db.cursor()
-        myDeviceToken = cursor.execute("SELECT deviceNotificationToken FROM User WHERE userId = %s", uid).fetchone()[0]
-        _pushNotification(myDeviceToken, friendPayload)
-    else:
-        cursor = apicall.db.cursor()
-        cursor.execute("SELECT phoneNumber, name, thumbnail FROM User WHERE userId = %s", uid)
+
+
+    def _addFriendReq(self, friendUid):
+        nowstr = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+        try:
+            cursor = self.db.cursor()
+            cursor.execute("INSERT INTO FriendRequest (sourceUserId1, targetUserId2, timestamp) VALUES(?, ?, ?)", (self._uid, friendUid, nowstr))
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            raise
+        return nowstr
+
+
+    def _notifyFriendRequest(self, reqType, friendDeviceToken, requestedTimestamp):
+        cursor = self.db.cursor()
+        cursor.execute("SELECT phoneNumber, name, thumbnail FROM User WHERE userId = %s", self._uid)
         user = cursor.fetchone()
         assert(user)
-        friendPayload["type"] = "friendRequest"
-        friendPayload["message"] = apicall.params.get("message", "{} suggested you become Veni friends.".format(name))
-        friendPayload["type"] = "friendAccepted"
-        friendPayload["message"] = "accepted friend request"
-        friendPayload["userId"] = uid
-        friendPayload["phoneNumber"] = user[0]
-        friendPayload["name"] = user[1]
-        friendPayload["thumbnail"] = user[2]
-        friendPayload["requestTimestamp"] = None
-        _pushNotification(friendUser[1], friendPayload)
+        if reqType == "friendRequest":
+            msg = self.params.get("message", "{} suggested you become Veni friends.".format(user[1]))
+        else:
+            msg = "{} accepted friend request.".format(user[1])
+        friendPayload = {
+            "type": reqType,
+            "message": msg, 
+            "userId": self_uid,
+            "phoneNumber": user[0],
+            "name": user[1],
+            "thumbnail": user[2],
+            "requestedTimestamp": requestedTimestamp
+        }
+        self._pushNotification(friendDeviceToken, friendPayload)
+
+
+    # TODO:  auto-expiring friends requires push notification --> use a separate script
+    @apihandler
+    def addFriend(self):
+        if self._friendCount() >= _g_maxFriends:
+            abort(403)
+        cursor = self.db.cursor()
+        cursor.execute("SELECT userId, deviceNotificationToken, phoneNumber, name, thumbnail FROM User WHERE phoneNumber = %s", self.params["friendPhoneNumber"])
+        friendUser = cursor.fetchone()
+        if not friendUser:
+            abort(404)
+        if "remove" in self.params:
+            _removeFriend(friendUser[0], friendUser[1])
+            return { "message": "successfully removed friend" }, 200
+        cursor = self.db.cursor()
+        cursor.execute("SELECT timestamp FROM FriendRequest WHERE sourceUserId = %s AND targetUserId = %s", (friendUser[0], self._uid))
+        friendReq = cursor.fetchone()
+        if friendReq:
+            self._promoteFriendReq(friendUser[0])
+            self._notifyFriendReq("friendAccepted", friendUser[1], friendReq[0])
+            return jsonify({ "friend": { "userId": friendUser[0], "phoneNumber": friendUser[2], "name": friendUser[3], "thumbnail": friendUser[4] } }), 200
+        else:
+            requestedTimestamp = self._addFriendReq(friendUser[0])
+            self._notifyFriendReq("friendRequest", friendUser[1], requestedTimestamp)
+            return { "message": "sent friend request" }, 202
+
+
+    @apihandler
+    def contactFriend(self):
+        sql = "INSERT INTO ContactLog (sourceUserId, targetUserId, timestamp) VALUES (%s, %s, %s)"
+        cursor = self.db.cursor()
         try:
-            cursor = apicall.db.cursor()
-            cursor.execute("INSERT INTO FriendRequest (sourceUserId1, targetUserId2, timestamp) VALUES(?, ?, ?)", (uid, friendUid, nowstr))
-            apicall.db.commit()
+            nowstr = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+            cursor.execute(sql, (self._uid, self.param["friendUserId"], nowstr))
+            self.db.commit()
         except Exception as e:
-            apicall.db.rollback()
+            self.db.rollback()
             raise
-
-
-def _contactFriend(apicall):
-    uid = _checkUID(apicall.params, apicall.db)
-    sql = "INSERT INTO ContactLog (sourceUserId, targetUserId, timestamp) VALUES (%s, %s, %s)"
-    cursor = apicall.db.cursor()
-    try:
-        nowstr = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
-        cursor.execute(sql, (uid, apicall.param["friendUserId"], nowstr))
-        apicall.db.commit()
-    except Exception as e:
-        apicall.db.rollback()
-        raise
+        return { "message": "contact attempt logged" }, 200
 
 
 
@@ -301,30 +319,28 @@ def _contactFriend(apicall):
 @app.route("/userInfo", methods=['POST'])
 def userInfo():
     global app
-    requiredParams = [ ] 
-    handler = _setUserInfo
-    APICall(app, request, handler, requiredParams).handle()
+    return APICall(app, request).setUserInfo()
 
 
 @app.route("/status", methods=['POST'])
 def status():
     global app
     requiredParams = [ "userId", "free" ]
-    APICall(app, request, _setStatus, requiredParams).handle()
+    return APICall(app, request, requiredParams).setStatus()
 
 
 @app.route("/friend", methods=['POST'])
 def friend():
     global app
     requiredParams = [ "userId", "friendPhoneNumber" ]
-    APICall(app, request, _addFriend, requiredParams).handle()
+    return APICall(app, request, requiredParams).addFriend()
 
 
 @app.route("/contact", methods=['POST'])
 def contact():
     global app
     requiredParams = [ "userId", "friendUserId" ]
-    APICall(app, request, _contactFriend, requiredParams).handle()
+    return APICall(app, request, requiredParams).contactFriend()
 
 
 
