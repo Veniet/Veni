@@ -81,7 +81,7 @@ class APICall:
         if not uid  or  (not isinstance(uid, int)  and  not uid.isdigit()):
             abort(400)
         cursor = self._db.cursor()
-        cursor.execute("SELECT phoneNumber FROM User WHERE userId = %s", (uid, ))
+        cursor.execute("SELECT phoneNumber FROM User WHERE userId = %s", (uid,))
         return uid if cursor.fetchone() else None
 
 
@@ -136,7 +136,7 @@ class APICall:
 
     def _uidFromPhoneNum(self, phoneNum):
         cursor = self._db.cursor()
-        cursor.execute("SELECT userId FROM User WHERE phoneNumber = %s", (phoneNum, ))
+        cursor.execute("SELECT userId FROM User WHERE phoneNumber = %s", (phoneNum,))
         ur = cursor.fetchone()
         return ur[0] if ur else None
 
@@ -228,7 +228,7 @@ class APICall:
         nowstr = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
         cursor = self._db.cursor()
         try:
-            self.cursor.execute("UPDATE Friend SET timeEnded = %s WHERE timeEnded IS NOT NULL AND ((userId1 = %s AND userId2 = %s) OR (userId1 = %s AND userId2 = %s))", (nowstr, self._uid, friendUid, friendUid, self._uid)) 
+            cursor.execute("UPDATE Friend SET timeEnded = %s WHERE timeEnded IS NULL AND ((userId1 = %s AND userId2 = %s) OR (userId1 = %s AND userId2 = %s))", (nowstr, self._uid, friendUid, friendUid, self._uid)) 
             self._db.commit()
             self._pushNotification(friendDeviceToken, { "type": "removeFriend", "userId": self._uid })
         except Exception as e:
@@ -240,7 +240,7 @@ class APICall:
         nowstr = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
         try:
             cursor = self._db.cursor()
-            cursor.execute("INSERT INTO Friend (userId1, userId2, timeStarted, timeEnded) VALUES(?, ?, ?, ?)", (friendUid, self._uid, nowstr, None))
+            cursor.execute("INSERT INTO Friend (userId1, userId2, timeStarted, timeEnded) VALUES(%s, %s, %s, %s)", (friendUid, self._uid, nowstr, None))
             cursor.execute("DELETE FROM FriendRequest WHERE sourceUserId = %s AND targetUserId = %s", (friendUid, self._uid))
             self._db.commit()
         except Exception as e:
@@ -252,7 +252,7 @@ class APICall:
         nowstr = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
         try:
             cursor = self._db.cursor()
-            cursor.execute("INSERT INTO FriendRequest (sourceUserId1, targetUserId2, timestamp) VALUES(?, ?, ?)", (self._uid, friendUid, nowstr))
+            cursor.execute("INSERT INTO FriendRequest (sourceUserId, targetUserId, timestamp) VALUES(%s, %s, %s)", (self._uid, friendUid, nowstr))
             self._db.commit()
         except Exception as e:
             self._db.rollback()
@@ -262,7 +262,7 @@ class APICall:
 
     def _notifyFriendRequest(self, reqType, friendDeviceToken, requestedTimestamp):
         cursor = self._db.cursor()
-        cursor.execute("SELECT phoneNumber, name, thumbnail FROM User WHERE userId = %s", self._uid)
+        cursor.execute("SELECT phoneNumber, name, thumbnail FROM User WHERE userId = %s", (self._uid,))
         user = cursor.fetchone()
         assert(user)
         if reqType == "friendRequest":
@@ -272,7 +272,7 @@ class APICall:
         friendPayload = {
             "type": reqType,
             "message": msg, 
-            "userId": self_uid,
+            "userId": self._uid,
             "phoneNumber": user[0],
             "name": user[1],
             "thumbnail": user[2],
@@ -288,14 +288,14 @@ class APICall:
             self._app.logger.info("user {} tried to add too many friends".format(self._uid))
             abort(403)
         cursor = self._db.cursor()
-        cursor.execute("SELECT userId, deviceNotificationToken, phoneNumber, name, thumbnail FROM User WHERE phoneNumber = %s", (self.params["friendPhoneNumber"], ))
+        cursor.execute("SELECT userId, deviceNotificationToken, phoneNumber, name, thumbnail FROM User WHERE phoneNumber = %s", (self.params["friendPhoneNumber"],))
         friendUser = cursor.fetchone()
         if not friendUser:
             self._app.logger.warning("user {} tried to add friend with unknown phoneNumber={}".format(self._uid, self.params["friendPhoneNumber"]))
             abort(404)
         if "remove" in self.params:
             self._app.logger.info("user {} removing friend {}".format(self._uid, friendUser[0]))
-            _removeFriend(friendUser[0], friendUser[1])
+            self._removeFriend(friendUser[0], friendUser[1])
             return make_response(jsonify({ "message": "successfully removed friend" }), 200)
         cursor = self._db.cursor()
         cursor.execute("SELECT timestamp FROM FriendRequest WHERE sourceUserId = %s AND targetUserId = %s", (friendUser[0], self._uid))
@@ -303,28 +303,29 @@ class APICall:
         if friendReq:
             self._app.logger.info("user {} accepted friend request from {}".format(self._uid, friendUser[0]))
             self._promoteFriendReq(friendUser[0])
-            self._notifyFriendReq("friendAccepted", friendUser[1], friendReq[0])
+            self._notifyFriendRequest("friendAccepted", friendUser[1], friendReq[0])
             return make_response(jsonify({ "friend": { "userId": friendUser[0], "phoneNumber": friendUser[2], "name": friendUser[3], "thumbnail": friendUser[4] } }), 200)
         else:
+            # TODO:  if duplicate, just update date and don't notify
             self._app.logger.info("user {} friend request to {}".format(self._uid, friendUser[0]))
             requestedTimestamp = self._addFriendReq(friendUser[0])
-            self._notifyFriendReq("friendRequest", friendUser[1], requestedTimestamp)
+            self._notifyFriendRequest("friendRequest", friendUser[1], requestedTimestamp)
             return make_response(jsonify({ "message": "sent friend request" }), 202)
 
 
     @apihandler
     def contactFriend(self):
-        self._app.logger.info("user {} contacting {}".format(self._uid, self.param["friendUserId"]))
+        self._app.logger.info("user {} contacting {}".format(self._uid, self.params["friendUserId"]))
         sql = "INSERT INTO ContactLog (sourceUserId, targetUserId, timestamp) VALUES (%s, %s, %s)"
         cursor = self._db.cursor()
         try:
             nowstr = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
-            cursor.execute(sql, (self._uid, self.param["friendUserId"], nowstr))
+            cursor.execute(sql, (self._uid, self.params["friendUserId"], nowstr))
             self._db.commit()
         except Exception as e:
             self._db.rollback()
             raise
-        return make_reponse(jsonify({ "message": "contact attempt logged" }), 200)
+        return make_response(jsonify({ "message": "contact attempt logged" }), 200)
 
 
 
