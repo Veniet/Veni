@@ -249,18 +249,27 @@ class APICall:
 
 
     def _addFriendReq(self, friendUid):
+        cursor = self._db.cursor()
+        cursor.execute("SELECT * FROM FriendRequest WHERE sourceUserId = %s AND targetUserId = %s", (self._uid, friendUid))
+        existingFriendReq = cursor.fetchone()
         nowstr = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+        if existingFriendReq:
+            sql = "UPDATE FriendRequest SET timestamp = %s WHERE sourceUserId = %s AND targetUserId = %s"
+            queryParams = (nowstr, self._uid, friendUid)
+        else:
+            sql = "INSERT INTO FriendRequest (sourceUserId, targetUserId, timestamp) VALUES(%s, %s, %s)"
+            queryParams = (self._uid, friendUid, nowstr)
+        cursor = self._db.cursor()
         try:
-            cursor = self._db.cursor()
-            cursor.execute("INSERT INTO FriendRequest (sourceUserId, targetUserId, timestamp) VALUES(%s, %s, %s)", (self._uid, friendUid, nowstr))
+            cursor.execute(sql, queryParams)
             self._db.commit()
         except Exception as e:
             self._db.rollback()
             raise
-        return nowstr
+        return (nowstr, existingFriendReq is None)
 
 
-    def _notifyFriendRequest(self, reqType, friendDeviceToken, requestedTimestamp):
+    def _notifyFriendRequest(self, reqType, friendDeviceToken, requestedTimestamp, repeat = False):
         cursor = self._db.cursor()
         cursor.execute("SELECT phoneNumber, name, thumbnail FROM User WHERE userId = %s", (self._uid,))
         user = cursor.fetchone()
@@ -275,9 +284,14 @@ class APICall:
             "userId": self._uid,
             "phoneNumber": user[0],
             "name": user[1],
-            "thumbnail": user[2],
-            "requestedTimestamp": requestedTimestamp
+            "thumbnail": user[2]
         }
+        if requestedTimestamp  and  isinstance(requestedTimestamp, datetime.datetime):
+            friendPayload["requestedTimestamp"] = requestedTimestamp.strftime("%Y-%m-%d %H-%M-S")
+        else:
+            friendPayload["requestedTimestamp"] = requestedTimestamp
+        if repeat:
+            friendPayload["repeat"] = True
         self._pushNotification(friendDeviceToken, friendPayload)
 
 
@@ -306,10 +320,9 @@ class APICall:
             self._notifyFriendRequest("friendAccepted", friendUser[1], friendReq[0])
             return make_response(jsonify({ "friend": { "userId": friendUser[0], "phoneNumber": friendUser[2], "name": friendUser[3], "thumbnail": friendUser[4] } }), 200)
         else:
-            # TODO:  if duplicate, just update date and don't notify
             self._app.logger.info("user {} friend request to {}".format(self._uid, friendUser[0]))
-            requestedTimestamp = self._addFriendReq(friendUser[0])
-            self._notifyFriendRequest("friendRequest", friendUser[1], requestedTimestamp)
+            requestedTimestamp, newReq = self._addFriendReq(friendUser[0])
+            self._notifyFriendRequest("friendRequest", friendUser[1], requestedTimestamp, not newReq)
             return make_response(jsonify({ "message": "sent friend request" }), 202)
 
 
