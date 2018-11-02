@@ -105,8 +105,9 @@ class APICall:
             if self._request.path != "/userInfo":
                 abort(401)
             # TAI:  check app key here?
+            return
         self._uid = self._decodeAuthToken()
-        if not self._uid  or  not isinstance(self._uid, int)  or  not self._uid.isdigit()):
+        if not self._uid  or  not (isinstance(self._uid, int)  or  self._uid.isdigit()):
             abort(401)
 
 
@@ -212,7 +213,7 @@ class APICall:
             return make_response(jsonify({ "message": resultMsg, "userId": self._uid }), 200)
         self._uid = self._uidFromPhoneNum(self.params["phoneNumber"])
         authToken = self._encodeAuthToken()
-        return make_response(jsonify({ "message": resultMsg, "userId": self._uid, "authToken": authToken }), 200)
+        return make_response(jsonify({ "message": resultMsg, "userId": self._uid, "authToken": authToken.decode() }), 200)
 
 
     @apihandler
