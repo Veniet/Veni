@@ -78,15 +78,6 @@ class APICall:
         return True
 
 
-    def _checkUID(self):
-        uid = self.params.get("userId", None)
-        if not uid  or  (not isinstance(uid, int)  and  not uid.isdigit()):
-            abort(400)
-        cursor = self._db.cursor()
-        cursor.execute("SELECT phoneNumber FROM User WHERE userId = %s", (uid,))
-        return uid if cursor.fetchone() else None
-
-
     def _encodeAuthToken(self):
         assert(self._uid)
         payload = {
@@ -110,12 +101,13 @@ class APICall:
         
 
     def _checkAuth(self):
-        if self._request.method != "POST"  or  self._request.path != "/userInfo"  or  "userId" in self.params:
-            self._uid = self._decodeAuthToken()
-            if not self._uid:
+        if "Authorization" not in self._request.headers:
+            if self._request.path != "/userInfo":
                 abort(401)
-        else:
-            pass   # TAI:  check app key?
+            # TAI:  check app key here?
+        self._uid = self._decodeAuthToken()
+        if not self._uid  or  not isinstance(self._uid, int)  or  not self._uid.isdigit()):
+            abort(401)
 
 
     def _connectDB(self):
@@ -168,7 +160,7 @@ class APICall:
     @apihandler
     def getUserInfo(self):
         cursor = self._db.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute("SELECT phoneNumber, name, email, birthYear, gender, relationshipStatus, thumbnail FROM User WHERE userId = %s", self._uid)
+        cursor.execute("SELECT phoneNumber, name, email, birthYear, gender, relationshipStatus, thumbnail FROM User WHERE userId = %s", (self._uid,))
         user = cursor.fetchone()
         if not user:
             abort(500)
@@ -178,7 +170,7 @@ class APICall:
     @apihandler
     def setUserInfo(self):
         queryParams = []
-        if "userId" in self.params:
+        if self._uid:
             sql = "UPDATE User SET "
             for paramKey, paramVal in self.params.items():
                 if paramKey in self._userColumns:
@@ -394,27 +386,28 @@ def userInfo():
 @app.route("/status", methods=['POST'])
 def status():
     global app
-    requiredParams = [ "userId", "free" ]
+    requiredParams = [ "free" ]
     return APICall(app, request, requiredParams).setStatus()
 
 
 @app.route("/friend", methods=['POST'])
 def friend():
     global app
-    requiredParams = [ "userId", "friendPhoneNumber" ]
+    requiredParams = [ "friendPhoneNumber" ]
     return APICall(app, request, requiredParams).addFriend()
 
 
 @app.route("/contact", methods=['POST'])
 def contact():
     global app
-    requiredParams = [ "userId", "friendUserId" ]
+    requiredParams = [ "friendUserId" ]
     return APICall(app, request, requiredParams).contactFriend()
 
 
 @app.route("/ping", methods=['GET'])
 def ping():
     global app
+    # Note:  no auth required for this.
     return make_response(jsonify({ "message": "pong" }), 200)
 
 
