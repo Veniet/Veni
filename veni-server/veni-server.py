@@ -2,11 +2,13 @@
 
 import datetime
 import MySQLdb
+import MySQLdb.cursors
 import json
 from flask import Flask
 from flask import request, abort, make_response
 from werkzeug.exceptions import HTTPException
 from flask.json import jsonify
+import jwt
 from pyfcm import FCMNotification
 import logging
 from logging import Formatter
@@ -85,13 +87,35 @@ class APICall:
         return uid if cursor.fetchone() else None
 
 
+    def _encodeAuthToken(self):
+        assert(self._uid)
+        payload = {
+            'iat': datetime.datetime.utcnow(),
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=self._config.get("auth-token-expiration-days", 365.25)),
+            'sub': self._uid
+        }
+        return jwt.encode(payload, self._config['token-key'], algorithm='HS256')
+
+
+    def _decodeAuthToken(self):
+        authHeader = self._request.headers.get('Authorization')
+        if not authHeader:
+            abort(403)
+        try:
+            return jwt.decode(authHeader.split()[1], self._config['token-key'])['sub']
+        except jwt.ExpiredSignatureError:
+            abort(401)    # TODO:  response should use WWW-Authenticate header field
+        except jwt.InvalidTokenError:
+            abort(403)
+        
+
     def _checkAuth(self):
-        # HACK FOR NOW.
-        # TODO:  use JWTs?  https://realpython.com/token-based-authentication-with-flask/
         if self._request.method != "POST"  or  self._request.path != "/userInfo"  or  "userId" in self.params:
-            self._uid = self._checkUID()
+            self._uid = self._decodeAuthToken()
             if not self._uid:
                 abort(401)
+        else:
+            pass   # TAI:  check app key?
 
 
     def _connectDB(self):
@@ -142,6 +166,21 @@ class APICall:
 
 
     @apihandler
+    def ping(self):
+        return make_response(jsonify({ "message": "pong" }), 200)
+
+
+    @apihandler
+    def getUserInfo(self):
+        cursor = self._db.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute("SELECT phoneNumber, name, email, birthYear, gender, relationshipStatus, thumbnail FROM User WHERE userId = %s", self._uid)
+        user = cursor.fetchone()
+        if not user:
+            abort(500)
+        return make_response(jsonify(user), 200)
+
+
+    @apihandler
     def setUserInfo(self):
         queryParams = []
         if "userId" in self.params:
@@ -182,9 +221,11 @@ class APICall:
         except Exception as e:
             self._db.rollback()
             raise
-        if not self._uid:
-            self._uid = self._uidFromPhoneNum(self.params["phoneNumber"])
-        return make_response(jsonify({ "message": resultMsg, "userId": self._uid }), 200)
+        if self._uid:
+            return make_response(jsonify({ "message": resultMsg, "userId": self._uid }), 200)
+        self._uid = self._uidFromPhoneNum(self.params["phoneNumber"])
+        authToken = self._encodeAuthToken()
+        return make_response(jsonify({ "message": resultMsg, "userId": self._uid, "authToken": authToken }), 200)
 
 
     @apihandler
@@ -195,7 +236,7 @@ class APICall:
         self._app.logger.info("user {} set free status".format(self._uid))
         insertCursor = self._db.cursor()
         try:
-            nowstr = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+            nowstr = datetime.datetime.utcnow().strftime("%Y-%m-%d %H-%M-%S")
             insertCursor.execute("INSERT INTO FreeLog (userId, timestamp) VALUES(%s, %s)", (self._uid, nowstr))
             self._db.commit()
         except Exception as e:
@@ -209,7 +250,7 @@ class APICall:
                  INNER JOIN Friend AS FF2 ON FL.userId = FF2.userId2 
                  WHERE FF1.userId2 = %s AND FF2.userId1 = %s
                  AND FL.timestamp > %s"""
-        timestr = (datetime.datetime.now() + datetime.timedelta(hours=-12)).strftime("%Y-%m-%d %H-%M-%S")
+        timestr = (datetime.datetime.utcnow() + datetime.timedelta(hours=-12)).strftime("%Y-%m-%d %H-%M-%S")
         friendCursor.execute(sql, (self._uid, self._uid, timestr))
         friends = []
         for friend in friendCursor.fetchall():
@@ -225,7 +266,7 @@ class APICall:
 
 
     def _removeFriend(self, friendUid, friendDeviceToken):
-        nowstr = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+        nowstr = datetime.datetime.utcnow().strftime("%Y-%m-%d %H-%M-%S")
         cursor = self._db.cursor()
         try:
             cursor.execute("UPDATE Friend SET timeEnded = %s WHERE timeEnded IS NULL AND ((userId1 = %s AND userId2 = %s) OR (userId1 = %s AND userId2 = %s))", (nowstr, self._uid, friendUid, friendUid, self._uid)) 
@@ -237,7 +278,7 @@ class APICall:
 
 
     def _promoteFriendReq(self, friendUid):
-        nowstr = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+        nowstr = datetime.datetime.utcnow().strftime("%Y-%m-%d %H-%M-%S")
         try:
             cursor = self._db.cursor()
             cursor.execute("INSERT INTO Friend (userId1, userId2, timeStarted, timeEnded) VALUES(%s, %s, %s, %s)", (friendUid, self._uid, nowstr, None))
@@ -252,7 +293,7 @@ class APICall:
         cursor = self._db.cursor()
         cursor.execute("SELECT * FROM FriendRequest WHERE sourceUserId = %s AND targetUserId = %s", (self._uid, friendUid))
         existingFriendReq = cursor.fetchone()
-        nowstr = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+        nowstr = datetime.datetime.utcnow().strftime("%Y-%m-%d %H-%M-%S")
         if existingFriendReq:
             sql = "UPDATE FriendRequest SET timestamp = %s WHERE sourceUserId = %s AND targetUserId = %s"
             queryParams = (nowstr, self._uid, friendUid)
@@ -332,7 +373,7 @@ class APICall:
         sql = "INSERT INTO ContactLog (sourceUserId, targetUserId, timestamp) VALUES (%s, %s, %s)"
         cursor = self._db.cursor()
         try:
-            nowstr = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+            nowstr = datetime.datetime.utcnow().strftime("%Y-%m-%d %H-%M-%S")
             cursor.execute(sql, (self._uid, self.params["friendUserId"], nowstr))
             self._db.commit()
         except Exception as e:
@@ -346,10 +387,13 @@ class APICall:
 ## ROUTES ##
 ############
 
-@app.route("/userInfo", methods=['POST'])
+@app.route("/userInfo", methods=['POST', 'GET'])
 def userInfo():
     global app
-    return APICall(app, request).setUserInfo()
+    if request.method == 'GET':
+        return APICall(app, request).getUserInfo()
+    else:
+        return APICall(app, request).setUserInfo()
 
 
 @app.route("/status", methods=['POST'])
@@ -371,6 +415,12 @@ def contact():
     global app
     requiredParams = [ "userId", "friendUserId" ]
     return APICall(app, request, requiredParams).contactFriend()
+
+
+@app.route("/ping", methods=['GET'])
+def ping():
+    global app
+    return APICall(app, request, []).ping()
 
 
 
