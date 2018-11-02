@@ -166,11 +166,6 @@ class APICall:
 
 
     @apihandler
-    def ping(self):
-        return make_response(jsonify({ "message": "pong" }), 200)
-
-
-    @apihandler
     def getUserInfo(self):
         cursor = self._db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute("SELECT phoneNumber, name, email, birthYear, gender, relationshipStatus, thumbnail FROM User WHERE userId = %s", self._uid)
@@ -420,7 +415,7 @@ def contact():
 @app.route("/ping", methods=['GET'])
 def ping():
     global app
-    return APICall(app, request, []).ping()
+    return make_response(jsonify({ "message": "pong" }), 200)
 
 
 
